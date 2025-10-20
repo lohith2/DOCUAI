@@ -41,33 +41,33 @@ Permissions	IAM Policies
 🚀 Quick Start
 1️⃣ Create Resources
 
-S3 bucket – to store uploaded documents.
+- S3 bucket – to store uploaded documents
 
-Lambda function – runtime: Python 3.10+
+- Lambda function – runtime: Python 3.10+
 
-API Gateway – with POST endpoint integrated with Lambda.
+- API Gateway – with POST endpoint integrated with Lambda
 
-IAM Role – attach Textract, S3, Bedrock, and CloudWatch policies.
+- IAM Role – attach Textract, S3, Bedrock, and CloudWatch policies
 
 2️⃣ Set Lambda Environment
 
-Make sure your Lambda has:
+- Make sure your Lambda has:
 
 AWS_REGION=us-west-2
 
 3️⃣ Deploy the Lambda Code
 
-Paste the lambda_handler and ask_question_bedrock functions into your Lambda console.
+- Paste the lambda_handler and ask_question_bedrock functions into your Lambda console.
 
 Your lambda_handler entry point will:
 
-Accept the payload from API Gateway,
+- Accept the payload from API Gateway
 
-Upload the file to S3,
+- Upload the file to S3
 
-Extract text using Textract,
+- Extract text using Textract
 
-Query Bedrock Llama 3 for an answer.
+- Query Bedrock Llama 3 for an answer
 
 📜 License
 
