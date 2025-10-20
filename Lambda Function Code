@@ -1,0 +1,89 @@
+import boto3
+import json
+import time
+import base64
+
+s3 = boto3.client('s3')
+textract = boto3.client('textract')
+bedrock = boto3.client('bedrock-runtime')
+
+def lambda_handler(event, context):
+    bucket = event.get('bucket')
+    file_name = event.get('file_name')
+    file_content = event.get('file_content') 
+    question = event.get('question', 'What is the main topic?')
+
+    if not bucket or not file_name or not file_content:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Bucket name, file name, and file content are required.')
+        }
+
+    try:
+        file_bytes = base64.b64decode(file_content)
+        s3.put_object(Bucket=bucket, Key=file_name, Body=file_bytes)
+
+        response = textract.start_document_text_detection(
+            DocumentLocation={
+                'S3Object': {
+                    'Bucket': bucket,
+                    'Name': file_name
+                }
+            }
+        )
+        job_id = response['JobId']
+        
+        status = None
+        while status != 'SUCCEEDED':
+            time.sleep(5)
+            response = textract.get_document_text_detection(JobId=job_id)
+            status = response['JobStatus']
+        
+        text_blocks = [block['Text'] for block in response['Blocks'] if block['BlockType'] == 'LINE']
+        extracted_text = "\n".join(text_blocks)
+
+        answer = ask_question_bedrock(extracted_text, question)
+        
+        # Step 4: Return only the answer
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'question': question,
+                'answer': answer,
+                'message': 'Text extraction and analysis completed successfully.'
+            })
+        }
+
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f'Error processing document: {str(e)}')
+        }
+
+def ask_question_bedrock(text, question):
+    prompt = (
+        f"Please answer the following question based on the context provided below:\n\n"
+        f"Question: {question}\n\n"
+        f"Context: {text}\n\n"
+        f"Answer:"
+    )
+    
+    payload = {
+        "prompt": prompt
+    }
+    
+    response = bedrock.invoke_model(
+        modelId="meta.llama3-70b-instruct-v1:0", 
+        body=json.dumps(payload),
+        contentType="application/json",
+        accept="application/json"
+    )
+    
+    response_body = json.loads(response['body'].read())
+    
+    generated_text = response_body.get('generation', '')
+    if generated_text:
+        return generated_text.strip()  
+    else:
+        return 'No answer found'
+
